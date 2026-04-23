@@ -15,6 +15,7 @@ from src.utils.visualize import save_graph_as_png
 from src.cli.input import (
     parse_cli_inputs,
 )
+from src.tools.market import MarketProfile, get_market_profile_for_tickers
 
 import argparse
 from datetime import datetime
@@ -140,12 +141,15 @@ if __name__ == "__main__":
     )
 
     tickers = inputs.tickers
+    market_profile = get_market_profile_for_tickers(tickers)
     selected_analysts = inputs.selected_analysts
 
     # Construct portfolio here
     portfolio = {
         "cash": inputs.initial_cash,
         "margin_requirement": inputs.margin_requirement,
+        "market_profile": market_profile.value,
+        "trade_lot_size": 100 if market_profile == MarketProfile.A_SHARE else 1,
         "margin_used": 0.0,
         "positions": {
             ticker: {

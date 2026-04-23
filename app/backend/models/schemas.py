@@ -1,9 +1,10 @@
 from datetime import datetime, timedelta
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import List, Optional, Dict, Any
 from src.llm.models import ModelProvider
 from enum import Enum
 from app.backend.services.graph import extract_base_agent_key
+from src.tools.market import normalize_tickers
 
 
 class FlowRunStatus(str, Enum):
@@ -68,6 +69,11 @@ class BaseHedgeFundRequest(BaseModel):
     margin_requirement: float = 0.0
     portfolio_positions: Optional[List[PortfolioPosition]] = None
     api_keys: Optional[Dict[str, str]] = None
+
+    @model_validator(mode="after")
+    def normalize_and_validate_tickers(self):
+        self.tickers = [ticker.display_ticker for ticker in normalize_tickers(self.tickers)]
+        return self
 
     def get_agent_ids(self) -> List[str]:
         """Extract agent IDs from graph structure"""

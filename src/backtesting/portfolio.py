@@ -4,6 +4,7 @@ from typing import Dict, Mapping
 from types import MappingProxyType
 
 from .types import PortfolioSnapshot, PositionState, TickerRealizedGains
+from src.tools.market import MarketProfile, get_market_profile_for_tickers
 
 
 class Portfolio:
@@ -40,6 +41,7 @@ class Portfolio:
                 for ticker in tickers
             },
         }
+        self._market_profile = get_market_profile_for_tickers(tickers)
 
     def get_snapshot(self) -> PortfolioSnapshot:
         positions_copy: Dict[str, PositionState] = {
@@ -82,7 +84,9 @@ class Portfolio:
     def apply_long_buy(self, ticker: str, quantity: int, price: float) -> int:
         if quantity <= 0:
             return 0
-        quantity = int(quantity)
+        quantity = self._normalize_buy_quantity(int(quantity))
+        if quantity <= 0:
+            return 0
         position = self._portfolio["positions"][ticker]
         cost = quantity * price
         if cost <= self._portfolio["cash"]:
@@ -97,6 +101,7 @@ class Portfolio:
             self._portfolio["cash"] -= cost
             return quantity
         max_quantity = int(self._portfolio["cash"] / price) if price > 0 else 0
+        max_quantity = self._normalize_buy_quantity(max_quantity)
         if max_quantity > 0:
             cost = max_quantity * price
             old_shares = position["long"]
@@ -126,6 +131,8 @@ class Portfolio:
         return quantity
 
     def apply_short_open(self, ticker: str, quantity: int, price: float) -> int:
+        if self._market_profile == MarketProfile.A_SHARE:
+            return 0
         if quantity <= 0:
             return 0
         quantity = int(quantity)
@@ -170,6 +177,8 @@ class Portfolio:
         return 0
 
     def apply_short_cover(self, ticker: str, quantity: int, price: float) -> int:
+        if self._market_profile == MarketProfile.A_SHARE:
+            return 0
         position = self._portfolio["positions"][ticker]
         quantity = min(int(quantity), position["short"]) if quantity > 0 else 0
         if quantity <= 0:
@@ -193,3 +202,7 @@ class Portfolio:
             position["short_margin_used"] = 0.0
         return quantity
 
+    def _normalize_buy_quantity(self, quantity: int) -> int:
+        if self._market_profile == MarketProfile.A_SHARE:
+            return (quantity // 100) * 100
+        return quantity

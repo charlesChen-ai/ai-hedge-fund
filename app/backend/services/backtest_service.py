@@ -14,6 +14,7 @@ from src.tools.api import (
 )
 from app.backend.services.graph import run_graph_async, parse_hedge_fund_response
 from app.backend.services.portfolio import create_portfolio
+from src.tools.market import MarketProfile, get_backtest_dates, get_market_profile_for_tickers
 
 class BacktestService:
     """
@@ -56,6 +57,7 @@ class BacktestService:
         self.model_provider = model_provider
         self.request = request
         self.portfolio_values = []
+        self.market_profile = get_market_profile_for_tickers(tickers)
 
     def execute_trade(self, ticker: str, action: str, quantity: float, current_price: float) -> int:
         """
@@ -66,6 +68,13 @@ class BacktestService:
             return 0
 
         quantity = int(quantity)  # force integer shares
+        if self.market_profile == MarketProfile.A_SHARE:
+            if action in {"short", "cover"}:
+                return 0
+            if action == "buy":
+                quantity = (quantity // 100) * 100
+                if quantity <= 0:
+                    return 0
         position = self.portfolio["positions"][ticker]
 
         if action == "buy":
@@ -88,6 +97,8 @@ class BacktestService:
             else:
                 # Calculate maximum affordable quantity
                 max_quantity = int(self.portfolio["cash"] / current_price)
+                if self.market_profile == MarketProfile.A_SHARE:
+                    max_quantity = (max_quantity // 100) * 100
                 if max_quantity > 0:
                     cost = max_quantity * current_price
                     old_shares = position["long"]
@@ -227,7 +238,8 @@ class BacktestService:
         end_date_dt = datetime.strptime(self.end_date, "%Y-%m-%d")
         start_date_dt = end_date_dt - relativedelta(years=1)
         start_date_str = start_date_dt.strftime("%Y-%m-%d")
-        api_key = self.request.api_keys.get("FINANCIAL_DATASETS_API_KEY")
+        api_keys = (getattr(self.request, "api_keys", None) or {}) if self.request else {}
+        api_key = api_keys.get("FINANCIAL_DATASETS_API_KEY")
 
         for ticker in self.tickers:
             get_prices(ticker, start_date_str, self.end_date, api_key=api_key)
@@ -290,7 +302,7 @@ class BacktestService:
         # Pre-fetch all data at the start
         self.prefetch_data()
 
-        dates = pd.date_range(self.start_date, self.end_date, freq="B")
+        dates = get_backtest_dates(self.start_date, self.end_date, self.tickers)
         performance_metrics = {
             "sharpe_ratio": 0.0,
             "sortino_ratio": 0.0,

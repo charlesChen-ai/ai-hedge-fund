@@ -257,12 +257,12 @@ export function StockAnalyzerNode({
                       <span>Tickers</span>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      You can add multiple tickers using commas (AAPL,NVDA,TSLA)
+                      You can add multiple tickers using commas (AAPL,NVDA,TSLA or 600519.SH,000001.SZ,300750.SZ)
                     </TooltipContent>
                   </Tooltip>
                 </div>
                 <Input
-                  placeholder="Enter tickers"
+                  placeholder="AAPL,NVDA,TSLA or 600519.SH,000001.SZ"
                   value={tickers}
                   onChange={handleTickersChange}
                 />

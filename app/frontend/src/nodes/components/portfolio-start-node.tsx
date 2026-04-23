@@ -299,7 +299,7 @@ export function PortfolioStartNode({
                       <span>Positions</span>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      Add your portfolio positions with ticker, quantity, and trade price
+                      Add positions with US or A-share tickers, e.g. AAPL or 600519.SH
                     </TooltipContent>
                   </Tooltip>
                 </div>
@@ -308,7 +308,7 @@ export function PortfolioStartNode({
                     return (
                     <div key={index} className="flex gap-2 items-center">
                       <Input
-                        placeholder="Ticker"
+                        placeholder="Ticker / 600519.SH"
                         value={position.ticker}
                         onChange={(e) => handlePositionChange(index, 'ticker', e.target.value)}
                         className="flex-1"

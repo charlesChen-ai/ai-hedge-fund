@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from typing_extensions import Literal
 from src.utils.progress import progress
 from src.utils.llm import call_llm
+from src.tools.market import MarketProfile, get_market_profile_for_tickers
 
 
 class PortfolioDecision(BaseModel):
@@ -106,6 +107,8 @@ def compute_allowed_actions(
     margin_requirement = float(portfolio.get("margin_requirement", 0.5))
     margin_used = float(portfolio.get("margin_used", 0.0))
     equity = float(portfolio.get("equity", cash))
+    market_profile = MarketProfile(portfolio.get("market_profile") or get_market_profile_for_tickers(tickers).value)
+    trade_lot_size = int(portfolio.get("trade_lot_size") or (100 if market_profile == MarketProfile.A_SHARE else 1))
 
     for ticker in tickers:
         price = float(current_prices.get(ticker, 0.0))
@@ -126,13 +129,15 @@ def compute_allowed_actions(
         if cash > 0 and price > 0:
             max_buy_cash = int(cash // price)
             max_buy = max(0, min(max_qty, max_buy_cash))
+            if trade_lot_size > 1:
+                max_buy = (max_buy // trade_lot_size) * trade_lot_size
             if max_buy > 0:
                 actions["buy"] = max_buy
 
         # Short side
-        if short_shares > 0:
+        if market_profile != MarketProfile.A_SHARE and short_shares > 0:
             actions["cover"] = short_shares
-        if price > 0 and max_qty > 0:
+        if market_profile != MarketProfile.A_SHARE and price > 0 and max_qty > 0:
             if margin_requirement <= 0.0:
                 # If margin requirement is zero or unset, only cap by max_qty
                 max_short = max_qty

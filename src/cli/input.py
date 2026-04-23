@@ -8,6 +8,7 @@ from colorama import Fore, Style
 from src.utils.analysts import ANALYST_ORDER
 from src.llm.models import LLM_ORDER, OLLAMA_LLM_ORDER, get_model_info, ModelProvider, find_model_by_name
 from src.utils.ollama import ensure_ollama_and_model
+from src.tools.market import normalize_tickers
 
 from dataclasses import dataclass
 from typing import Optional
@@ -24,7 +25,7 @@ def add_common_args(
         "--tickers",
         type=str,
         required=require_tickers,
-        help="Comma-separated list of stock ticker symbols (e.g., AAPL,MSFT,GOOGL)",
+        help="Comma-separated list of stock ticker symbols (e.g., AAPL,MSFT,GOOGL or 600519.SH,000001.SZ,300750.SZ)",
     )
     if include_analyst_flags:
         parser.add_argument(
@@ -67,7 +68,8 @@ def add_date_args(parser: argparse.ArgumentParser, *, default_months_back: int |
 def parse_tickers(tickers_arg: str | None) -> list[str]:
     if not tickers_arg:
         return []
-    return [ticker.strip() for ticker in tickers_arg.split(",") if ticker.strip()]
+    raw_tickers = [ticker.strip() for ticker in tickers_arg.split(",") if ticker.strip()]
+    return [ticker.display_ticker for ticker in normalize_tickers(raw_tickers)]
 
 
 def select_analysts(flags: dict | None = None) -> list[str]:
@@ -284,5 +286,4 @@ def parse_cli_inputs(
         show_agent_graph=getattr(args, "show_agent_graph", False),
         raw_args=args,
     )
-
 

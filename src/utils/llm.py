@@ -1,10 +1,13 @@
 """Helper functions for LLM"""
 
 import json
+import re
+from langchain_core.messages import SystemMessage
 from pydantic import BaseModel
 from src.llm.models import get_model, get_model_info
 from src.utils.progress import progress
 from src.graph.state import AgentState
+from src.tools.market import MarketProfile, get_market_profile_for_tickers
 
 
 def call_llm(
@@ -47,6 +50,7 @@ def call_llm(
 
     model_info = get_model_info(model_name, model_provider)
     llm = get_model(model_name, model_provider, api_keys)
+    prompt = add_market_context_to_prompt(prompt, state)
 
     # For non-JSON support models, we can use structured output
     if not (model_info and not model_info.has_json_mode()):
@@ -107,8 +111,10 @@ def create_default_response(model_class: type[BaseModel]) -> BaseModel:
 
 
 def extract_json_from_response(content: str) -> dict | None:
-    """Extracts JSON from markdown-formatted response."""
+    """Extract JSON from markdown, reasoning-tagged, or raw model responses."""
     try:
+        content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+
         json_start = content.find("```json")
         if json_start != -1:
             json_text = content[json_start + 7 :]  # Skip past ```json
@@ -116,9 +122,51 @@ def extract_json_from_response(content: str) -> dict | None:
             if json_end != -1:
                 json_text = json_text[:json_end].strip()
                 return json.loads(json_text)
+
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            pass
+
+        decoder = json.JSONDecoder()
+        for index, char in enumerate(content):
+            if char not in "{[":
+                continue
+            try:
+                parsed, _ = decoder.raw_decode(content[index:])
+                if isinstance(parsed, dict):
+                    return parsed
+            except json.JSONDecodeError:
+                continue
     except Exception as e:
         print(f"Error extracting JSON from response: {e}")
     return None
+
+
+def add_market_context_to_prompt(prompt: any, state: AgentState | None = None):
+    if not state:
+        return prompt
+    tickers = state.get("data", {}).get("tickers") or []
+    try:
+        market_profile = get_market_profile_for_tickers(tickers)
+    except Exception:
+        return prompt
+    if market_profile != MarketProfile.A_SHARE:
+        return prompt
+
+    context = (
+        "Market context: the tickers are China A-shares. Interpret all financial data in CNY, "
+        "consider China-specific policy/regulatory risk, state ownership, retail-driven liquidity, "
+        "China accounting/reporting context, price-limit regimes, and restricted short selling. "
+        "Trading recommendations should be long-only unless the explicit allowed-action payload says otherwise."
+    )
+    if hasattr(prompt, "to_messages"):
+        return [SystemMessage(content=context)] + list(prompt.to_messages())
+    if isinstance(prompt, list):
+        return [SystemMessage(content=context)] + prompt
+    if isinstance(prompt, str):
+        return f"{context}\n\n{prompt}"
+    return prompt
 
 
 def get_agent_model_config(state, agent_name):

@@ -55,6 +55,41 @@
     "provider": "Kimi"
   },
   {
+    "display_name": "MiniMax M2.7",
+    "model_name": "MiniMax-M2.7",
+    "provider": "MiniMax"
+  },
+  {
+    "display_name": "MiniMax M2.7 Highspeed",
+    "model_name": "MiniMax-M2.7-highspeed",
+    "provider": "MiniMax"
+  },
+  {
+    "display_name": "MiniMax M2.5",
+    "model_name": "MiniMax-M2.5",
+    "provider": "MiniMax"
+  },
+  {
+    "display_name": "MiniMax M2.5 Highspeed",
+    "model_name": "MiniMax-M2.5-highspeed",
+    "provider": "MiniMax"
+  },
+  {
+    "display_name": "MiniMax M2.1",
+    "model_name": "MiniMax-M2.1",
+    "provider": "MiniMax"
+  },
+  {
+    "display_name": "MiniMax M2.1 Highspeed",
+    "model_name": "MiniMax-M2.1-highspeed",
+    "provider": "MiniMax"
+  },
+  {
+    "display_name": "MiniMax M2",
+    "model_name": "MiniMax-M2",
+    "provider": "MiniMax"
+  },
+  {
     "display_name": "Gemini 3 Pro",
     "model_name": "gemini-3-pro-preview",
     "provider": "Google"

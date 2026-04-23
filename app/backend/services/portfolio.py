@@ -1,13 +1,18 @@
 
 from typing import Optional, List
 from app.backend.models.schemas import PortfolioPosition
+from src.tools.market import MarketProfile, get_market_profile_for_tickers, normalize_ticker
 
 
 def create_portfolio(initial_cash: float, margin_requirement: float, tickers: list[str], portfolio_positions: Optional[List[PortfolioPosition]] = None) -> dict:
+    tickers = [normalize_ticker(ticker).display_ticker for ticker in tickers]
+    market_profile = get_market_profile_for_tickers(tickers)
     # Initialize base portfolio structure
     portfolio = {
         "cash": initial_cash,  # Initial cash amount
         "margin_requirement": margin_requirement,  # Initial margin requirement
+        "market_profile": market_profile.value,
+        "trade_lot_size": 100 if market_profile == MarketProfile.A_SHARE else 1,
         "margin_used": 0.0,  # total margin usage across all short positions
         "positions": {
             ticker: {
@@ -31,7 +36,7 @@ def create_portfolio(initial_cash: float, margin_requirement: float, tickers: li
     # If portfolio positions are provided, populate them
     if portfolio_positions:
         for position in portfolio_positions:
-            ticker = position.ticker
+            ticker = normalize_ticker(position.ticker).display_ticker
             quantity = position.quantity
             trade_price = position.trade_price
             

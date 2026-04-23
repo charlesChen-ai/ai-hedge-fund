@@ -23,6 +23,8 @@ wheels/
 # Virtual Environment
 venv/
 ENV/
+.conda/
+.conda-home/
 
 # Environment Variables
 .env

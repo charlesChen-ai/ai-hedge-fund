@@ -2,8 +2,16 @@
 export enum ModelProvider {
   OPENAI = 'OpenAI',
   ANTHROPIC = 'Anthropic',
+  DEEPSEEK = 'DeepSeek',
+  GOOGLE = 'Google',
   GROQ = 'Groq',
+  KIMI = 'Kimi',
+  MINIMAX = 'MiniMax',
   OLLAMA = 'Ollama',
+  OPENROUTER = 'OpenRouter',
+  GIGACHAT = 'GigaChat',
+  AZURE_OPENAI = 'Azure OpenAI',
+  XAI = 'xAI',
 }
 
 export interface AgentModelConfig {

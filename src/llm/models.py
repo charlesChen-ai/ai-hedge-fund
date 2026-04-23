@@ -24,6 +24,7 @@ class ModelProvider(str, Enum):
     GROQ = "Groq"
     KIMI = "Kimi"
     META = "Meta"
+    MINIMAX = "MiniMax"
     MISTRAL = "Mistral"
     OPENAI = "OpenAI"
     OLLAMA = "Ollama"
@@ -50,7 +51,7 @@ class LLMModel(BaseModel):
 
     def has_json_mode(self) -> bool:
         """Check if the model supports JSON mode"""
-        if self.is_deepseek() or self.is_gemini():
+        if self.is_deepseek() or self.is_gemini() or self.is_minimax():
             return False
         # Only certain Ollama models support JSON mode
         if self.is_ollama():
@@ -67,6 +68,10 @@ class LLMModel(BaseModel):
     def is_kimi(self) -> bool:
         """Check if the model is a Kimi (Moonshot) model"""
         return self.provider == ModelProvider.KIMI
+
+    def is_minimax(self) -> bool:
+        """Check if the model is a MiniMax model"""
+        return self.provider == ModelProvider.MINIMAX
 
     def is_gemini(self) -> bool:
         """Check if the model is a Gemini model"""
@@ -213,6 +218,14 @@ def get_model(model_name: str, model_provider: ModelProvider, api_keys: dict = N
         # Kimi exposes an OpenAI-compatible endpoint. Default to the international host;
         # users in mainland China can override via MOONSHOT_BASE_URL=https://api.moonshot.cn/v1.
         base_url = os.getenv("MOONSHOT_BASE_URL") or os.getenv("KIMI_BASE_URL") or "https://api.moonshot.ai/v1"
+        return ChatOpenAI(model=model_name, api_key=api_key, base_url=base_url)
+    elif model_provider == ModelProvider.MINIMAX:
+        api_key = (api_keys or {}).get("MINIMAX_API_KEY") or os.getenv("MINIMAX_API_KEY")
+        if not api_key:
+            print(f"API Key Error: Please make sure MINIMAX_API_KEY is set in your .env file or provided via API keys.")
+            raise ValueError("MiniMax API key not found. Please make sure MINIMAX_API_KEY is set in your .env file or provided via API keys.")
+        # Mainland China MiniMax OpenAI-compatible endpoint.
+        base_url = os.getenv("MINIMAX_BASE_URL", "https://api.minimaxi.com/v1")
         return ChatOpenAI(model=model_name, api_key=api_key, base_url=base_url)
     elif model_provider == ModelProvider.XAI:
         api_key = (api_keys or {}).get("XAI_API_KEY") or os.getenv("XAI_API_KEY")

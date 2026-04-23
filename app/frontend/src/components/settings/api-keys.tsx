@@ -67,6 +67,13 @@ const LLM_API_KEYS: ApiKey[] = [
     placeholder: 'your-moonshot-api-key'
   },
   {
+    key: 'MINIMAX_API_KEY',
+    label: 'MiniMax API',
+    description: 'For MiniMax models through the Mainland China OpenAI-compatible endpoint',
+    url: 'https://platform.minimaxi.com/',
+    placeholder: 'your-minimax-api-key'
+  },
+  {
     key: 'OPENROUTER_API_KEY',
     label: 'OpenRouter API',
     description: 'For OpenRouter models (gpt-4o, gpt-4o-mini, etc.)',

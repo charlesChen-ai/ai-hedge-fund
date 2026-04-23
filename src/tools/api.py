@@ -21,6 +21,8 @@ from src.data.models import (
     InsiderTradeResponse,
     CompanyFactsResponse,
 )
+from src.tools.market import DataProvider, get_data_provider_for_ticker, normalize_ticker
+from src.tools import akshare_api
 
 # Global cache instance
 _cache = get_cache()
@@ -62,8 +64,19 @@ def _make_api_request(url: str, headers: dict, method: str = "GET", json_data: d
 
 def get_prices(ticker: str, start_date: str, end_date: str, api_key: str = None) -> list[Price]:
     """Fetch price data from cache or API."""
+    provider = get_data_provider_for_ticker(ticker)
+    normalized = normalize_ticker(ticker)
+    if provider == DataProvider.AKSHARE:
+        cache_key = f"{provider.value}_{normalized.display_ticker}_{start_date}_{end_date}"
+        if cached_data := _cache.get_prices(cache_key):
+            return [Price(**price) for price in cached_data]
+        prices = akshare_api.get_prices(normalized.display_ticker, start_date, end_date)
+        if prices:
+            _cache.set_prices(cache_key, [p.model_dump() for p in prices])
+        return prices
+
     # Create a cache key that includes all parameters to ensure exact matches
-    cache_key = f"{ticker}_{start_date}_{end_date}"
+    cache_key = f"{provider.value}_{ticker}_{start_date}_{end_date}"
     
     # Check cache first - simple exact match
     if cached_data := _cache.get_prices(cache_key):
@@ -104,8 +117,19 @@ def get_financial_metrics(
     api_key: str = None,
 ) -> list[FinancialMetrics]:
     """Fetch financial metrics from cache or API."""
+    provider = get_data_provider_for_ticker(ticker)
+    normalized = normalize_ticker(ticker)
+    if provider == DataProvider.AKSHARE:
+        cache_key = f"{provider.value}_{normalized.display_ticker}_{period}_{end_date}_{limit}"
+        if cached_data := _cache.get_financial_metrics(cache_key):
+            return [FinancialMetrics(**metric) for metric in cached_data]
+        financial_metrics = akshare_api.get_financial_metrics(normalized.display_ticker, end_date, period=period, limit=limit)
+        if financial_metrics:
+            _cache.set_financial_metrics(cache_key, [m.model_dump() for m in financial_metrics])
+        return financial_metrics
+
     # Create a cache key that includes all parameters to ensure exact matches
-    cache_key = f"{ticker}_{period}_{end_date}_{limit}"
+    cache_key = f"{provider.value}_{ticker}_{period}_{end_date}_{limit}"
     
     # Check cache first - simple exact match
     if cached_data := _cache.get_financial_metrics(cache_key):
@@ -147,6 +171,17 @@ def search_line_items(
     api_key: str = None,
 ) -> list[LineItem]:
     """Fetch line items from API."""
+    provider = get_data_provider_for_ticker(ticker)
+    if provider == DataProvider.AKSHARE:
+        normalized = normalize_ticker(ticker)
+        return akshare_api.search_line_items(
+            normalized.display_ticker,
+            line_items,
+            end_date,
+            period=period,
+            limit=limit,
+        )
+
     # If not in cache or insufficient data, fetch from API
     headers = {}
     financial_api_key = api_key or os.environ.get("FINANCIAL_DATASETS_API_KEY")
@@ -188,8 +223,12 @@ def get_insider_trades(
     api_key: str = None,
 ) -> list[InsiderTrade]:
     """Fetch insider trades from cache or API."""
+    provider = get_data_provider_for_ticker(ticker)
+    if provider == DataProvider.AKSHARE:
+        return []
+
     # Create a cache key that includes all parameters to ensure exact matches
-    cache_key = f"{ticker}_{start_date or 'none'}_{end_date}_{limit}"
+    cache_key = f"{provider.value}_{ticker}_{start_date or 'none'}_{end_date}_{limit}"
     
     # Check cache first - simple exact match
     if cached_data := _cache.get_insider_trades(cache_key):
@@ -254,8 +293,19 @@ def get_company_news(
     api_key: str = None,
 ) -> list[CompanyNews]:
     """Fetch company news from cache or API."""
+    provider = get_data_provider_for_ticker(ticker)
+    normalized = normalize_ticker(ticker)
+    if provider == DataProvider.AKSHARE:
+        cache_key = f"{provider.value}_{normalized.display_ticker}_{start_date or 'none'}_{end_date}_{limit}"
+        if cached_data := _cache.get_company_news(cache_key):
+            return [CompanyNews(**news) for news in cached_data]
+        company_news = akshare_api.get_company_news(normalized.display_ticker, end_date, start_date=start_date, limit=limit)
+        if company_news:
+            _cache.set_company_news(cache_key, [news.model_dump() for news in company_news])
+        return company_news
+
     # Create a cache key that includes all parameters to ensure exact matches
-    cache_key = f"{ticker}_{start_date or 'none'}_{end_date}_{limit}"
+    cache_key = f"{provider.value}_{ticker}_{start_date or 'none'}_{end_date}_{limit}"
     
     # Check cache first - simple exact match
     if cached_data := _cache.get_company_news(cache_key):
@@ -318,6 +368,10 @@ def get_market_cap(
     api_key: str = None,
 ) -> float | None:
     """Fetch market cap from the API."""
+    provider = get_data_provider_for_ticker(ticker)
+    if provider == DataProvider.AKSHARE:
+        return akshare_api.get_market_cap(ticker, end_date)
+
     # Check if end_date is today
     if end_date == datetime.datetime.now().strftime("%Y-%m-%d"):
         # Get the market cap from company facts API
